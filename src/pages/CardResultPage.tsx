@@ -1,10 +1,12 @@
 import { useLocation, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { Header } from "@/components/Header";
 import { VisaCard } from "@/components/VisaCard";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/context/LanguageContext";
+import { useUserData } from "@/hooks/useUserData";
 import { tierDisplayNames } from "@/lib/mock-data";
-import { ArrowRight, Building, CreditCard, Check } from "lucide-react";
+import { ArrowRight, Building, CreditCard, Check, Bookmark, Loader2 } from "lucide-react";
 import { useEffect } from "react";
 
 interface CardResultState {
@@ -18,12 +20,31 @@ const CardResultPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as CardResultState | null;
+  const { user, saveCard } = useUserData();
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
   useEffect(() => {
     if (!state) {
       navigate("/");
     }
   }, [state, navigate]);
+
+  const handleSaveCard = async () => {
+    if (!state) return;
+    
+    setIsSaving(true);
+    const success = await saveCard({
+      cardName: `${state.issuer} ${tierDisplayNames[state.tier] || state.tier}`,
+      issuer: state.issuer,
+      tier: state.tier,
+      maskedBin: state.lastFour,
+    });
+    setIsSaving(false);
+    if (success) {
+      setIsSaved(true);
+    }
+  };
 
   if (!state) {
     return null;
@@ -72,15 +93,43 @@ const CardResultPage = () => {
             </div>
           </div>
 
-          {/* Action Button */}
-          <Button
-            variant="hero"
-            className="w-full"
-            onClick={() => navigate("/benefits", { state: { tier: state.tier, issuer: state.issuer } })}
-          >
-            {t("card.viewBenefits")}
-            <ArrowRight className="h-5 w-5 ml-2" />
-          </Button>
+          {/* Action Buttons */}
+          <div className="space-y-3">
+            <Button
+              variant="hero"
+              className="w-full"
+              onClick={() => navigate("/benefits", { state: { tier: state.tier, issuer: state.issuer } })}
+            >
+              {t("card.viewBenefits")}
+              <ArrowRight className="h-5 w-5 ml-2" />
+            </Button>
+
+            {user && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleSaveCard}
+                disabled={isSaving || isSaved}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : isSaved ? (
+                  <>
+                    <Check className="h-4 w-4 mr-2" />
+                    Card Saved
+                  </>
+                ) : (
+                  <>
+                    <Bookmark className="h-4 w-4 mr-2" />
+                    Save to My Cards
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </div>
       </main>
     </div>
