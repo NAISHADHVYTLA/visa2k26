@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useLanguage } from "@/context/LanguageContext";
+import { useUserData } from "@/hooks/useUserData";
 import { type Benefit } from "@/lib/mock-data";
 import { ArrowLeft, Sparkles, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +29,7 @@ const PersonalizePage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { saveRecommendation } = useUserData();
   const state = location.state as PersonalizeState | null;
 
   const [lifestyle, setLifestyle] = useState<Lifestyle | null>(null);
@@ -74,6 +76,14 @@ const PersonalizePage = () => {
       });
 
       setRecommendations(recs);
+      
+      // Save recommendation history for logged-in users
+      saveRecommendation({
+        tier: state.tier,
+        lifestyle,
+        location: locationInput || undefined,
+        recommendations: data.recommendations,
+      });
     } catch (error) {
       console.error("Error getting recommendations:", error);
       toast({

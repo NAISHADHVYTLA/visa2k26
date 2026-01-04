@@ -14,7 +14,96 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          created_at: string
+          first_name: string | null
+          id: string
+          last_name: string | null
+          preferred_language: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          preferred_language?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          preferred_language?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      recommendation_history: {
+        Row: {
+          created_at: string
+          id: string
+          lifestyle: string
+          location: string | null
+          recommendations: Json
+          tier: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lifestyle: string
+          location?: string | null
+          recommendations: Json
+          tier: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lifestyle?: string
+          location?: string | null
+          recommendations?: Json
+          tier?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      saved_cards: {
+        Row: {
+          card_name: string
+          created_at: string
+          id: string
+          issuer: string
+          masked_bin: string
+          tier: string
+          user_id: string
+        }
+        Insert: {
+          card_name: string
+          created_at?: string
+          id?: string
+          issuer: string
+          masked_bin: string
+          tier: string
+          user_id: string
+        }
+        Update: {
+          card_name?: string
+          created_at?: string
+          id?: string
+          issuer?: string
+          masked_bin?: string
+          tier?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
