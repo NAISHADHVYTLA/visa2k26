@@ -15,8 +15,14 @@ import {
   History, 
   Trash2, 
   ArrowLeft,
-  Loader2 
+  Loader2,
+  Bell,
+  Mail,
+  Smartphone,
+  MessageSquare
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 interface SavedCard {
   id: string;
@@ -288,8 +294,62 @@ const ProfilePage = () => {
             </CardContent>
           </Card>
 
+          {/* Notification Preferences - Coming Soon */}
+          <Card className="mb-8 animate-slide-up border-border/50" style={{ animationDelay: "0.2s" }}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5" />
+                Notification Preferences
+                <Badge variant="secondary" className="ml-2 text-xs">Coming Soon</Badge>
+              </CardTitle>
+              <CardDescription>
+                Choose how you'd like to receive updates about your benefits
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4 opacity-60">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/30">
+                  <div className="flex items-center gap-3">
+                    <Mail className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <Label className="font-medium">Email Notifications</Label>
+                      <p className="text-sm text-muted-foreground">Weekly benefit summaries and tips</p>
+                    </div>
+                  </div>
+                  <Switch disabled checked={true} />
+                </div>
+                
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/30">
+                  <div className="flex items-center gap-3">
+                    <Smartphone className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <Label className="font-medium">Push Notifications</Label>
+                      <p className="text-sm text-muted-foreground">Real-time benefit alerts</p>
+                    </div>
+                  </div>
+                  <Switch disabled />
+                </div>
+                
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/30">
+                  <div className="flex items-center gap-3">
+                    <MessageSquare className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <Label className="font-medium">SMS Alerts</Label>
+                      <p className="text-sm text-muted-foreground">Important updates via text</p>
+                    </div>
+                  </div>
+                  <Switch disabled />
+                </div>
+              </div>
+              
+              <p className="text-xs text-muted-foreground mt-4 text-center">
+                Notification preferences will be available in a future update
+              </p>
+            </CardContent>
+          </Card>
+
           {/* Recommendation History */}
-          <Card className="animate-slide-up border-border/50" style={{ animationDelay: "0.2s" }}>
+          <Card className="animate-slide-up border-border/50" style={{ animationDelay: "0.3s" }}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <History className="h-5 w-5" />
