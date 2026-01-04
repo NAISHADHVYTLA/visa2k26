@@ -65,10 +65,13 @@ const Index = () => {
             <span>AI-Powered Benefits Discovery</span>
           </div>
           
-          <h1 className="text-4xl md:text-6xl font-bold mb-4">
+          <h1 className="text-4xl md:text-6xl font-bold mb-4 relative z-10">
             <span className="text-foreground">{t("home.title")}</span>
             <br />
-            <span className="text-gradient">{t("home.subtitle")}</span>
+            <span className="relative inline-block">
+              <span className="absolute inset-0 -z-10 gradient-primary rounded-lg scale-110 opacity-90"></span>
+              <span className="text-primary-foreground px-4 py-1">{t("home.subtitle")}</span>
+            </span>
           </h1>
           
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
