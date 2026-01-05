@@ -1,10 +1,26 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Input validation schema
+const TranslateRequestSchema = z.object({
+  text: z.string().min(1).max(5000),
+  targetLanguage: z.enum(["en", "ta"]).default("ta"),
+});
+
+// Sanitize text to prevent prompt injection
+function sanitizeText(text: string): string {
+  // Remove control characters and excessive whitespace
+  return text
+    .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
+    .replace(/\n{3,}/g, '\n\n') // Limit consecutive newlines
+    .trim();
+}
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -40,20 +56,31 @@ serve(async (req) => {
 
     console.log(`Authenticated user: ${user.id}`);
 
-    const { text, targetLanguage = "ta" } = await req.json();
-
-    if (!text) {
+    // Parse and validate input
+    const rawBody = await req.json();
+    const parseResult = TranslateRequestSchema.safeParse(rawBody);
+    
+    if (!parseResult.success) {
+      console.error("Validation failed:", parseResult.error.issues);
       return new Response(
-        JSON.stringify({ error: "Missing required field: text" }),
+        JSON.stringify({ 
+          error: "Invalid input", 
+          details: parseResult.error.issues.map(i => i.message).join(", ")
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const { text, targetLanguage } = parseResult.data;
+    
+    // Sanitize input text
+    const sanitizedText = sanitizeText(text);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       console.error("LOVABLE_API_KEY is not configured");
       return new Response(
-        JSON.stringify({ translatedText: text }), // Return original if no API key
+        JSON.stringify({ translatedText: sanitizedText }), // Return original if no API key
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -85,7 +112,7 @@ Rules:
             role: "user",
             content: `Translate this to ${targetLangName}:
 
-${text}`
+${sanitizedText}`
           }
         ],
         max_tokens: 500,
@@ -111,13 +138,13 @@ ${text}`
       }
 
       return new Response(
-        JSON.stringify({ translatedText: text }),
+        JSON.stringify({ translatedText: sanitizedText }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const data = await response.json();
-    const translatedText = data.choices?.[0]?.message?.content?.trim() || text;
+    const translatedText = data.choices?.[0]?.message?.content?.trim() || sanitizedText;
 
     console.log(`Translated text to ${targetLanguage} (user: ${user.id}): ${translatedText.substring(0, 50)}...`);
 
@@ -129,7 +156,7 @@ ${text}`
   } catch (error) {
     console.error("Error in translate function:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: "An error occurred processing your request" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

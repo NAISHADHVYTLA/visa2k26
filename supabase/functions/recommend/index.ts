@@ -1,23 +1,34 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface BenefitInput {
-  id: string;
-  name: string;
-  category: string;
-  tnc: string;
-}
+// Input validation schema
+const BenefitSchema = z.object({
+  id: z.string().max(100),
+  name: z.string().max(200),
+  category: z.string().max(100),
+  tnc: z.string().max(5000),
+});
 
-interface RecommendRequest {
-  lifestyle: "student" | "professional" | "traveler" | "family";
-  location?: string;
-  benefits: BenefitInput[];
-  language?: "en" | "ta";
+const RecommendRequestSchema = z.object({
+  lifestyle: z.enum(["student", "professional", "traveler", "family"]),
+  location: z.string().max(100).optional(),
+  benefits: z.array(BenefitSchema).min(1).max(50),
+  language: z.enum(["en", "ta"]).default("en"),
+});
+
+// Sanitize text to prevent prompt injection
+function sanitizeText(text: string): string {
+  // Remove control characters and excessive whitespace
+  return text
+    .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
+    .replace(/\n{3,}/g, '\n\n') // Limit consecutive newlines
+    .trim();
 }
 
 serve(async (req) => {
@@ -54,14 +65,25 @@ serve(async (req) => {
 
     console.log(`Authenticated user: ${user.id}`);
 
-    const { lifestyle, location, benefits, language = "en" }: RecommendRequest = await req.json();
-
-    if (!lifestyle || !benefits || benefits.length === 0) {
+    // Parse and validate input
+    const rawBody = await req.json();
+    const parseResult = RecommendRequestSchema.safeParse(rawBody);
+    
+    if (!parseResult.success) {
+      console.error("Validation failed:", parseResult.error.issues);
       return new Response(
-        JSON.stringify({ error: "Missing required fields: lifestyle and benefits" }),
+        JSON.stringify({ 
+          error: "Invalid input", 
+          details: parseResult.error.issues.map(i => i.message).join(", ")
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const { lifestyle, location, benefits, language } = parseResult.data;
+    
+    // Sanitize location if provided
+    const sanitizedLocation = location ? sanitizeText(location) : undefined;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -70,7 +92,7 @@ serve(async (req) => {
       const fallbackRecs = benefits.slice(0, 3).map((b, i) => ({
         benefitId: b.id,
         rank: i + 1,
-        reason: `This ${b.category.toLowerCase()} benefit could be useful for your ${lifestyle} lifestyle.`
+        reason: `This ${sanitizeText(b.category).toLowerCase()} benefit could be useful for your ${lifestyle} lifestyle.`
       }));
       return new Response(
         JSON.stringify({ recommendations: fallbackRecs }),
@@ -89,9 +111,13 @@ serve(async (req) => {
       ? "Provide reasons in simple, natural Tamil (தமிழ்)."
       : "Provide reasons in simple, clear English.";
 
-    const benefitsList = benefits.map((b, i) => 
-      `${i + 1}. ID: ${b.id}\n   Name: ${b.name}\n   Category: ${b.category}\n   Summary: ${b.tnc.substring(0, 150)}...`
-    ).join("\n\n");
+    // Sanitize benefit data before including in prompt
+    const benefitsList = benefits.map((b, i) => {
+      const sanitizedName = sanitizeText(b.name);
+      const sanitizedCategory = sanitizeText(b.category);
+      const sanitizedTnc = sanitizeText(b.tnc).substring(0, 150);
+      return `${i + 1}. ID: ${b.id}\n   Name: ${sanitizedName}\n   Category: ${sanitizedCategory}\n   Summary: ${sanitizedTnc}...`;
+    }).join("\n\n");
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -126,7 +152,7 @@ Output format (JSON):
             role: "user",
             content: `User Profile:
 - Lifestyle: ${lifestyle} (${lifestyleContext[lifestyle]})
-${location ? `- Location: ${location}` : ""}
+${sanitizedLocation ? `- Location: ${sanitizedLocation}` : ""}
 
 Available Benefits:
 ${benefitsList}
@@ -160,7 +186,7 @@ Select the top 3 most relevant benefits for this user and explain why each matte
       const fallbackRecs = benefits.slice(0, 3).map((b, i) => ({
         benefitId: b.id,
         rank: i + 1,
-        reason: `This ${b.category.toLowerCase()} benefit is great for your ${lifestyle} lifestyle.`
+        reason: `This ${sanitizeText(b.category).toLowerCase()} benefit is great for your ${lifestyle} lifestyle.`
       }));
       return new Response(
         JSON.stringify({ recommendations: fallbackRecs }),
@@ -190,7 +216,7 @@ Select the top 3 most relevant benefits for this user and explain why each matte
       recommendations = benefits.slice(0, 3).map((b, i) => ({
         benefitId: b.id,
         rank: i + 1,
-        reason: `This ${b.category.toLowerCase()} benefit matches your ${lifestyle} lifestyle perfectly.`
+        reason: `This ${sanitizeText(b.category).toLowerCase()} benefit matches your ${lifestyle} lifestyle perfectly.`
       }));
     }
 
@@ -209,7 +235,7 @@ Select the top 3 most relevant benefits for this user and explain why each matte
         validatedRecs.push({
           benefitId: b.id,
           rank: validatedRecs.length + 1,
-          reason: `This ${b.category.toLowerCase()} benefit suits your ${lifestyle} needs.`
+          reason: `This ${sanitizeText(b.category).toLowerCase()} benefit suits your ${lifestyle} needs.`
         });
       }
     }
@@ -224,7 +250,7 @@ Select the top 3 most relevant benefits for this user and explain why each matte
   } catch (error) {
     console.error("Error in recommend function:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: "An error occurred processing your request" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
