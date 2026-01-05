@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { tierDisplayNames, tierColors } from "@/lib/mock-data";
@@ -19,7 +20,10 @@ import {
   Bell,
   Mail,
   Smartphone,
-  MessageSquare
+  MessageSquare,
+  Pencil,
+  Check,
+  X
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -59,6 +63,9 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [deletingCard, setDeletingCard] = useState<string | null>(null);
   const [deletingHistory, setDeletingHistory] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ firstName: "", lastName: "" });
+  const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -160,6 +167,55 @@ const ProfilePage = () => {
     }
   };
 
+  const startEditing = () => {
+    setEditForm({
+      firstName: profile?.first_name || "",
+      lastName: profile?.last_name || "",
+    });
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setEditForm({ firstName: "", lastName: "" });
+  };
+
+  const saveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          first_name: editForm.firstName.trim() || null,
+          last_name: editForm.lastName.trim() || null,
+        })
+        .eq("user_id", user!.id);
+
+      if (error) throw error;
+
+      setProfile({
+        ...profile,
+        first_name: editForm.firstName.trim() || null,
+        last_name: editForm.lastName.trim() || null,
+        preferred_language: profile?.preferred_language || null,
+      });
+      setIsEditing(false);
+      toast({
+        title: "Profile Updated",
+        description: "Your profile has been updated successfully.",
+      });
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast({
+        title: "Error",
+        description: "Could not update profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -200,16 +256,65 @@ const ProfilePage = () => {
           {/* Profile Info */}
           <Card className="mb-8 animate-slide-up border-border/50">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Account Details
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Account Details
+                </CardTitle>
+                {!loading && !isEditing && (
+                  <Button variant="ghost" size="sm" onClick={startEditing}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {loading ? (
                 <div className="space-y-2">
                   <Skeleton className="h-4 w-48" />
                   <Skeleton className="h-4 w-64" />
+                </div>
+              ) : isEditing ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">First Name</Label>
+                      <Input
+                        id="firstName"
+                        value={editForm.firstName}
+                        onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
+                        placeholder="Enter first name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <Input
+                        id="lastName"
+                        value={editForm.lastName}
+                        onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
+                        placeholder="Enter last name"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={saveProfile} disabled={savingProfile} size="sm">
+                      {savingProfile ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Check className="h-4 w-4 mr-2" />
+                      )}
+                      Save
+                    </Button>
+                    <Button variant="outline" onClick={cancelEditing} disabled={savingProfile} size="sm">
+                      <X className="h-4 w-4 mr-2" />
+                      Cancel
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    <span className="text-muted-foreground">Email:</span>{" "}
+                    <span className="font-medium">{user.email}</span>
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-2">
