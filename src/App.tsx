@@ -10,6 +10,7 @@ import CardResultPage from "./pages/CardResultPage";
 import BenefitsPage from "./pages/BenefitsPage";
 import PersonalizePage from "./pages/PersonalizePage";
 import AuthPage from "./pages/AuthPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ProfilePage from "./pages/ProfilePage";
 import ComparePage from "./pages/ComparePage";
 import NotFound from "./pages/NotFound";
@@ -25,8 +26,9 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<Index />} />
+            <Route path="/" element={<Index />} />
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/compare" element={<ComparePage />} />
               <Route path="/card-result" element={<CardResultPage />} />
